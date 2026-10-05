@@ -1,6 +1,7 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import {
   Category,
+  categories,
   heroImage,
   materials,
   nav,
@@ -22,7 +23,8 @@ function useScrolled(threshold = 24) {
   return scrolled;
 }
 
-function useReveal() {
+/** Re-observe reveal nodes whenever the dependency key changes (e.g. filter). */
+function useReveal(depsKey: string | number) {
   useEffect(() => {
     const nodes = document.querySelectorAll<HTMLElement>("[data-reveal]");
     const io = new IntersectionObserver(
@@ -34,11 +36,26 @@ function useReveal() {
           }
         });
       },
-      { threshold: 0.12, rootMargin: "0px 0px -8% 0px" }
+      { threshold: 0.08, rootMargin: "0px 0px -4% 0px" }
     );
-    nodes.forEach((n) => io.observe(n));
+    nodes.forEach((n) => {
+      // Already-visible nodes stay visible across filter changes
+      if (!n.classList.contains("is-visible")) io.observe(n);
+    });
+    // Immediately reveal nodes already in (or near) the viewport
+    requestAnimationFrame(() => {
+      nodes.forEach((n) => {
+        if (n.classList.contains("is-visible")) return;
+        const r = n.getBoundingClientRect();
+        const vh = window.innerHeight || 0;
+        if (r.top < vh * 0.96 && r.bottom > 0) {
+          n.classList.add("is-visible");
+          io.unobserve(n);
+        }
+      });
+    });
     return () => io.disconnect();
-  }, []);
+  }, [depsKey]);
 }
 
 export default function App() {
@@ -46,7 +63,16 @@ export default function App() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [filter, setFilter] = useState<Category>("All");
   const [formStatus, setFormStatus] = useState<string | null>(null);
-  useReveal();
+
+  const filtered = useMemo(
+    () =>
+      filter === "All"
+        ? projects
+        : projects.filter((p) => p.category === filter),
+    [filter]
+  );
+
+  useReveal(`${filter}:${filtered.length}`);
 
   useEffect(() => {
     document.body.style.overflow = menuOpen ? "hidden" : "";
@@ -54,12 +80,6 @@ export default function App() {
       document.body.style.overflow = "";
     };
   }, [menuOpen]);
-
-  const filtered = useMemo(
-    () =>
-      filter === "All" ? projects : projects.filter((p) => p.category === filter),
-    [filter]
-  );
 
   const closeMenu = () => setMenuOpen(false);
 
@@ -69,12 +89,16 @@ export default function App() {
     const name = String(fd.get("name") || "").trim();
     const email = String(fd.get("email") || "").trim();
     const message = String(fd.get("message") || "").trim();
-    const subject = encodeURIComponent(`Project inquiry â€” ${name || "Client"}`);
+    const subject = encodeURIComponent(`Project inquiry — ${name || "Client"}`);
     const body = encodeURIComponent(
       `Name: ${name}\nEmail: ${email}\n\n${message}`
     );
-    setFormStatus("Opening your email clientâ€¦");
+    setFormStatus("Opening your email client…");
     window.location.href = `mailto:${site.email}?subject=${subject}&body=${body}`;
+  };
+
+  const onFilter = (c: Category) => {
+    setFilter(c);
   };
 
   return (
@@ -83,7 +107,11 @@ export default function App() {
         Skip to content
       </a>
 
-      <header className={`site-header ${scrolled ? "is-scrolled" : "is-top"} ${menuOpen ? "menu-open" : ""}`}>
+      <header
+        className={`site-header ${scrolled ? "is-scrolled" : "is-top"} ${
+          menuOpen ? "menu-open" : ""
+        }`}
+      >
         <div className="header-inner">
           <a className="logo" href="#top" aria-label="LUMEN Atelier home">
             <span className="logo-mark" aria-hidden="true">
@@ -104,6 +132,7 @@ export default function App() {
             Start a project
           </a>
           <button
+            type="button"
             className={`menu-toggle ${menuOpen ? "is-open" : ""}`}
             aria-label={menuOpen ? "Close menu" : "Open menu"}
             aria-expanded={menuOpen}
@@ -115,7 +144,11 @@ export default function App() {
         </div>
       </header>
 
-      <div className={`mobile-menu ${menuOpen ? "is-open" : ""}`} role="dialog" aria-modal="true">
+      <div
+        className={`mobile-menu ${menuOpen ? "is-open" : ""}`}
+        role="dialog"
+        aria-modal="true"
+      >
         <div className="mobile-menu-inner">
           <p className="eyebrow">Navigate</p>
           <nav aria-label="Mobile">
@@ -145,20 +178,23 @@ export default function App() {
       <main id="main">
         <section className="hero" id="top">
           <div className="hero-media">
-            <img src={heroImage} alt="Sunlit open-plan living room with floor-to-ceiling glass" />
+            <img
+              src={heroImage}
+              alt="Sunlit open-plan living room with floor-to-ceiling glass"
+            />
             <div className="hero-veil" />
           </div>
           <div className="hero-content">
             <p className="eyebrow gold" data-reveal>
-              Architectural interiors Â· Est. 2018
+              Architectural interiors · Est. 2018
             </p>
             <h1 data-reveal>
               Rooms that breathe
               <span> with the light.</span>
             </h1>
             <p className="lede" data-reveal>
-              {site.name} designs calm, material-honest interiors for homes and hospitality â€”
-              Gulf climate, European restraint.
+              {site.name} designs calm, material-honest interiors for homes and
+              hospitality — Gulf climate, European restraint.
             </p>
             <div className="hero-actions" data-reveal>
               <a className="btn btn-primary" href="#work">
@@ -195,25 +231,37 @@ export default function App() {
               <h2>Spaces with quiet conviction.</h2>
             </div>
             <p className="section-note">
-              Residential, hospitality, and retail interiors composed around daylight and tactile materials.
+              Residential, hospitality, and retail interiors composed around
+              daylight and tactile materials.
             </p>
           </div>
 
-          <div className="filters" role="tablist" aria-label="Project filters" data-reveal>
-            {(["All", "Residential", "Hospitality", "Retail"] as Category[]).map((c) => (
+          <div
+            className="filters"
+            role="tablist"
+            aria-label="Project filters"
+            data-reveal
+          >
+            {categories.map((c) => (
               <button
                 key={c}
+                type="button"
                 role="tab"
                 aria-selected={filter === c}
                 className={filter === c ? "is-active" : ""}
-                onClick={() => setFilter(c)}
+                onClick={() => onFilter(c)}
               >
                 {c}
               </button>
             ))}
           </div>
 
-          <div className="work-grid">
+          <p className="filter-count" aria-live="polite">
+            {filtered.length} project{filtered.length === 1 ? "" : "s"}
+            {filter !== "All" ? ` · ${filter}` : ""}
+          </p>
+
+          <div className="work-grid" key={filter}>
             {filtered.map((p, i) => (
               <article
                 className={`work-card ${i % 5 === 0 ? "is-wide" : ""}`}
@@ -230,7 +278,7 @@ export default function App() {
                 <div className="work-body">
                   <h3>{p.title}</h3>
                   <p className="work-loc">
-                    {p.location} Â· {p.year}
+                    {p.location} · {p.year}
                   </p>
                   <p>{p.blurb}</p>
                 </div>
@@ -250,13 +298,15 @@ export default function App() {
             </div>
             <div className="studio-copy" data-reveal>
               <p>
-                Founded by Noura Al-Hassan, {site.name} is an interior architecture practice
-                working between Riyadh, Dubai, and Copenhagen. We favour honest materials,
-                measured colour, and rooms that feel settled rather than staged.
+                Founded by Noura Al-Hassan, {site.name} is an interior
+                architecture practice working between Riyadh, Dubai, and
+                Copenhagen. We favour honest materials, measured colour, and
+                rooms that feel settled rather than staged.
               </p>
               <p>
-                Every project begins with site and sun path â€” then plan, joinery, and
-                atmosphere follow. Quiet luxury is not excess; it is clarity.
+                Every project begins with site and sun path — then plan,
+                joinery, and atmosphere follow. Quiet luxury is not excess; it
+                is clarity.
               </p>
               <dl className="studio-facts">
                 <div>
@@ -269,7 +319,7 @@ export default function App() {
                 </div>
                 <div>
                   <dt>Focus</dt>
-                  <dd>Homes Â· Hotels Â· Retail</dd>
+                  <dd>Homes · Hotels · Retail</dd>
                 </div>
               </dl>
             </div>
@@ -279,19 +329,48 @@ export default function App() {
         <section className="section services" id="services">
           <div className="section-head" data-reveal>
             <div>
-              <p className="eyebrow">Capabilities</p>
+              <p className="eyebrow">How we work</p>
               <h2>How we work with you.</h2>
             </div>
+            <p className="section-note">
+              Four clear steps from first conversation to first light — designed
+              to feel calm on every screen.
+            </p>
           </div>
-          <div className="services-grid">
+
+          {/* Mobile: horizontal swipe cards */}
+          <div
+            className="services-rail"
+            aria-label="How we work — swipe for each step"
+            data-reveal
+          >
             {services.map((s) => (
-              <article className="service-card" key={s.num} data-reveal>
-                <span className="service-num">{s.num}</span>
+              <article className="service-card service-card--rail" key={`rail-${s.num}`}>
+                <div className="service-card-top">
+                  <span className="service-num">{s.num}</span>
+                  <span className="service-pill">Step {s.num}</span>
+                </div>
                 <h3>{s.title}</h3>
                 <p>{s.text}</p>
               </article>
             ))}
           </div>
+
+          {/* Desktop / large: vertical timeline */}
+          <ol className="services-timeline" data-reveal>
+            {services.map((s) => (
+              <li key={`tl-${s.num}`}>
+                <span className="timeline-marker" aria-hidden="true">
+                  <span className="timeline-dot" />
+                </span>
+                <div className="timeline-body">
+                  <span className="service-num">{s.num}</span>
+                  <h3>{s.title}</h3>
+                  <p>{s.text}</p>
+                </div>
+              </li>
+            ))}
+          </ol>
         </section>
 
         <section className="section materials" id="materials">
@@ -301,7 +380,8 @@ export default function App() {
               <h2>Materials we return to.</h2>
             </div>
             <p className="section-note">
-              Champagne metals, pale stone, oak, and linen â€” a vocabulary of tactility.
+              Champagne metals, pale stone, oak, and linen — a vocabulary of
+              tactility.
             </p>
           </div>
           <div className="materials-strip">
@@ -338,7 +418,7 @@ export default function App() {
           <div className="press-track" data-reveal>
             {quotes.map((q) => (
               <blockquote key={q.attrib}>
-                <p>â€œ{q.text}â€</p>
+                <p>“{q.text}”</p>
                 <cite>{q.attrib}</cite>
               </blockquote>
             ))}
@@ -351,7 +431,8 @@ export default function App() {
               <p className="eyebrow">Contact</p>
               <h2>Tell us about the space you imagine.</h2>
               <p className="lede-sm">
-                Share a brief, a site, or a feeling. We reply within two business days.
+                Share a brief, a site, or a feeling. We reply within two business
+                days.
               </p>
               <ul className="contact-list">
                 <li>
@@ -360,7 +441,11 @@ export default function App() {
                 </li>
                 <li>
                   <span>WhatsApp</span>
-                  <a href={`https://wa.me/${site.whatsapp}`} target="_blank" rel="noreferrer">
+                  <a
+                    href={`https://wa.me/${site.whatsapp}`}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
                     {site.phone}
                   </a>
                 </li>
@@ -377,11 +462,23 @@ export default function App() {
             <form className="contact-form" onSubmit={onSubmit} data-reveal>
               <label>
                 Name
-                <input name="name" type="text" required placeholder="Your name" autoComplete="name" />
+                <input
+                  name="name"
+                  type="text"
+                  required
+                  placeholder="Your name"
+                  autoComplete="name"
+                />
               </label>
               <label>
                 Email
-                <input name="email" type="email" required placeholder="you@studio.com" autoComplete="email" />
+                <input
+                  name="email"
+                  type="email"
+                  required
+                  placeholder="you@studio.com"
+                  autoComplete="email"
+                />
               </label>
               <label>
                 Project type
@@ -394,7 +491,12 @@ export default function App() {
               </label>
               <label>
                 Message
-                <textarea name="message" rows={5} required placeholder="Site, timeline, atmosphereâ€¦" />
+                <textarea
+                  name="message"
+                  rows={5}
+                  required
+                  placeholder="Site, timeline, atmosphere…"
+                />
               </label>
               <button className="btn btn-primary" type="submit">
                 Send inquiry
@@ -422,8 +524,10 @@ export default function App() {
           </nav>
         </div>
         <div className="footer-bottom">
-          <p>Â© {new Date().getFullYear()} {site.name}. All rights reserved.</p>
-          <p>Designed for light Â· Built with care</p>
+          <p>
+            © {new Date().getFullYear()} {site.name}. All rights reserved.
+          </p>
+          <p>Designed for light · Built with care</p>
         </div>
       </footer>
 
