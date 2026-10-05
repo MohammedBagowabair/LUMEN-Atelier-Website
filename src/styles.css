@@ -541,6 +541,9 @@ h3 {
   overflow: hidden;
   border: 1px solid var(--line);
   transition: transform 0.35s var(--ease), box-shadow 0.35s var(--ease);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
 }
 .work-card:hover {
   transform: translateY(-4px);
@@ -556,6 +559,7 @@ h3 {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  object-position: center;
   transition: transform 0.7s var(--ease);
 }
 .work-card:hover .work-image img {
@@ -575,6 +579,9 @@ h3 {
   font-weight: 600;
 }
 .work-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
   padding: 1.25rem 1.3rem 1.5rem;
 }
 .work-body h3 {
@@ -590,6 +597,10 @@ h3 {
   margin: 0;
   color: var(--muted);
   font-size: 0.95rem;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 /* Studio */
@@ -1026,12 +1037,7 @@ h3 {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 1.75rem;
   }
-  .work-card.is-wide {
-    grid-column: span 2;
-  }
-  .work-card.is-wide .work-image {
-    aspect-ratio: 21 / 9;
-  }
+  /* Uniform cards — no oversized featured spans */
   .studio-grid {
     grid-template-columns: 1.1fr 1fr;
     gap: 4rem;

@@ -100,7 +100,7 @@ export const projects: Project[] = [
     location: "Manama, BH",
     year: "2024",
     category: "Hospitality",
-    image: u("1566073771259-6a850609517f"),
+    image: u("1564501049412-61c2a3083791"),
     blurb:
       "A lobby as a living room: travertine floors, low seating, and a champagne metal reception desk that catches afternoon light.",
   },
@@ -130,7 +130,7 @@ export const projects: Project[] = [
     location: "Riyadh, KSA",
     year: "2024",
     category: "Retail",
-    image: u("1555529733-0cae8f6c3a58"),
+    image: u("1558171813-4c088753af8f"),
     blurb:
       "A boutique for slow fashion: arched niches, champagne rails, and a fitting lounge wrapped in raw linen.",
   },

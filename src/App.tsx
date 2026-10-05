@@ -262,9 +262,9 @@ export default function App() {
           </p>
 
           <div className="work-grid" key={filter}>
-            {filtered.map((p, i) => (
+            {filtered.map((p) => (
               <article
-                className={`work-card ${i % 5 === 0 ? "is-wide" : ""}`}
+                className="work-card"
                 key={p.id}
                 data-reveal
               >
